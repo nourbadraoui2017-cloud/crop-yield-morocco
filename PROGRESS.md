@@ -5,7 +5,7 @@ Track work here. One entry per session — date, what got done, what's next, any
 ## Build order (from README)
 
 - [ ] 0. Check historical yield data availability (region/crop/years) — determines real timeline
-- [ ] 1. Pull and visualize NDVI data for the test region via GEE
+- [x] 1. Pull and visualize NDVI data for the test region via GEE
 - [ ] 2. Merge NDVI with historical rainfall/temperature + yield data
 - [ ] 3. Train and validate baseline regression model (test on unseen years)
 - [ ] 4. Wrap in a simple Streamlit dashboard
@@ -56,3 +56,30 @@ Track work here. One entry per session — date, what got done, what's next, any
   here (especially: how many years of matched NDVI+yield data end up
   usable — that's the number that determines if the modeling approach
   needs to change).
+
+### 2026-08-13 (approx, session continued)
+- GEE account created (non-commercial registration, project ID:
+  `crop-yield-morocco`). Switched dev environment from Colab to local
+  VS Code + venv per user preference — works fine since Earth Engine
+  computes server-side; used `auth_mode='localhost'` for local auth,
+  smoother than Colab's popup flow.
+- **STEP 1 DONE.** src/pull_ndvi.py successfully pulled NDVI for all 8
+  growing seasons (2017/18 through 2024/25), 192 rows total, saved to
+  data/raw/ndvi_rabat_sale_kenitra.csv + chart at
+  data/processed/ndvi_by_season.png. No gaps in the final run.
+  - Bug fixed along the way: chaining a second `.filterDate()` call onto
+    an already-filtered ImageCollection was silently returning 0 images
+    for every window, even for seasons independently confirmed to have
+    hundreds of images. Fixed by rebuilding each 10-day window's
+    ImageCollection query from scratch instead of narrowing a
+    pre-filtered one. Root cause not fully confirmed, but the rebuild
+    is more robust regardless.
+  - Region is still the rough bounding box fallback (not a precise
+    admin boundary) — fine for this stage, worth refining later.
+  - Visual sanity check: 2020/21 and 2023/24 show strong sustained
+    greenness (peaks >0.45-0.5); 2021/22 and 2022/23 stay low and
+    erratic (rarely >0.35) — consistent with known drought years.
+    NDVI signal looks real, not noise.
+- Next: run src/parse_yield_pdfs.py the same way (locally, in this
+  same venv) to resolve step 0 for real, then move to step 2 (merge
+  NDVI + weather + yield into one training table).
