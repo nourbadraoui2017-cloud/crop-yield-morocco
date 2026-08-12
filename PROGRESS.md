@@ -36,3 +36,23 @@ Track work here. One entry per session — date, what got done, what's next, any
 - Next: user picks region + sets up GEE account. Claude writes (a) the GEE
   NDVI pull script and (b) a script to download/parse the HCP + Ministry
   PDFs for actual regional yield data.
+- Region confirmed: **Rabat-Salé-Kénitra**.
+- Wrote src/pull_ndvi.py (GEE + geemap, Sentinel-2 NDVI, 10-day composites
+  per growing season Nov-Jun) and src/parse_yield_pdfs.py (downloads +
+  scans HCP/Ministry PDFs for region+crop+yield keyword matches, extracts
+  candidate tables). Also added requirements.txt.
+  NEITHER SCRIPT HAS BEEN RUN YET — the sandbox this was written in has
+  no general internet access and no GEE credentials, so both are
+  untested. Run them in Colab (real internet + your GEE login) and log
+  what actually happens.
+- Important caveat baked into pull_ndvi.py: Sentinel-2 harmonized SR
+  only reliably covers ~2017 onward, so NDVI history caps out around
+  8-9 growing seasons regardless of how far back yield data goes. That
+  ceiling — not the yield data — may end up being the real limit on
+  training set size. Worth knowing before step 2 (merging datasets).
+- Blocker: still waiting on GEE account creation (user in progress).
+- Next: user finishes GEE signup, then run pull_ndvi.py and
+  parse_yield_pdfs.py in Colab, fix whatever breaks, log real results
+  here (especially: how many years of matched NDVI+yield data end up
+  usable — that's the number that determines if the modeling approach
+  needs to change).

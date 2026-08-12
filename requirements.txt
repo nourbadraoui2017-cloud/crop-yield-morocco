@@ -1,0 +1,10 @@
+earthengine-api
+geemap
+pandas
+numpy
+scikit-learn
+xgboost
+matplotlib
+streamlit
+requests
+pdfplumber
