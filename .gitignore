@@ -1,0 +1,21 @@
+# Data (often large / not meant for git)
+data/raw/
+data/processed/
+*.csv
+*.tif
+*.nc
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+venv/
+.venv/
+
+# Env / secrets
+.env
+*.json.key
+credentials.json
+
+# OS
+.DS_Store
