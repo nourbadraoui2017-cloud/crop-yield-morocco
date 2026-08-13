@@ -4,7 +4,7 @@ Track work here. One entry per session — date, what got done, what's next, any
 
 ## Build order (from README)
 
-- [ ] 0. Check historical yield data availability (region/crop/years) — determines real timeline
+- [x] 0. Check historical yield data availability (region/crop/years) — determines real timeline
 - [x] 1. Pull and visualize NDVI data for the test region via GEE
 - [ ] 2. Merge NDVI with historical rainfall/temperature + yield data
 - [ ] 3. Train and validate baseline regression model (test on unseen years)
@@ -125,3 +125,47 @@ Track work here. One entry per session — date, what got done, what's next, any
   matched NDVI (2017+) and yield data overlap" -- the number that
   determines the final training set size and whether the modeling
   approach needs to change.
+
+### 2026-08-13 (continued further)
+- Generalizing to all years hit a second structural surprise: the table
+  layout itself changed over time, not just page numbers.
+  - 2023 format (already working): provinces as ROWS, crops as
+    COLUMNS, area+production tables on the SAME page.
+  - ~2016-2020 format (older): crops as ROWS (". Blé Dur", ". Blé
+    Tendre"), provinces as COLUMNS (with Rabat+Salé+Skhirate-Témara
+    merged into ONE combined column instead of 3 separate), and
+    area+production tables often on DIFFERENT (adjacent) pages.
+  - Wrote src/extract_cereal_table_old_format.py for the second format,
+    reusing the same x-coordinate gap-clustering technique (GAP_THRESHOLD
+    still works -- it's about physical spacing, not table orientation).
+  - Wrote src/build_full_yield_dataset.py to try both parsers per year
+    and combine whatever works. Also fixed a cosmetic bug: campaign
+    year labels sometimes extracted reversed ("2015-2014" instead of
+    "2014-2015") due to bidi text extraction next to Arabic -- fixed
+    by detecting and swapping when year1 > year2.
+- **RESULT: 74 rows across 6 real growing seasons**: 2014-2015,
+  2015-2016, 2016-2017, 2017-2018, 2018-2019, and 2021-2022 (wheat
+  area, production, computed yield, per province, for Blé Dur and Blé
+  Tendre separately). Saved to
+  data/processed/wheat_yield_rabat_sale_kenitra_all_years.csv
+- 2008-2015 annuaires use yet a THIRD format/page structure that
+  neither parser handles -- diminishing returns, decided not to chase
+  further for now (see note below on why 6 seasons is enough to start).
+  2008 specifically also has a corrupted PDF (decompression error).
+- **Key number for the model**: cross-referencing against NDVI coverage
+  (2017/18 through 2024/25, from src/pull_ndvi.py), only 3 seasons have
+  BOTH real NDVI and real yield data so far: 2017-2018, 2018-2019, and
+  2021-2022. The 2014-2017 yield-only seasons predate reliable
+  Sentinel-2 SR coverage for this region, so they can't be used for
+  NDVI-based training directly (though useful as historical/trend
+  context). 3 overlapping seasons is a very small training set --
+  worth remembering when picking the model in step 3 (favors a very
+  simple baseline, strict regularization, leave-one-season-out
+  validation; not enough data yet for tree ensembles to add value).
+- STEP 0: DONE (multi-year regional data resolved).
+- Next: build the actual merge (step 2) -- join
+  data/raw/ndvi_rabat_sale_kenitra.csv with
+  data/processed/wheat_yield_rabat_sale_kenitra_all_years.csv on
+  matching season/campaign, producing one training-ready table. Only
+  the 3 overlapping seasons will have a usable label, but all 8 NDVI
+  seasons are worth keeping in the merged file for context/plotting.
