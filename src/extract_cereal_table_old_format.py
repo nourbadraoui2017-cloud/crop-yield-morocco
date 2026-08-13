@@ -99,10 +99,14 @@ def parse_row_columns(row_words):
     return label, values
 
 
-def find_crop_rows(page) -> dict:
-    """Find the ". Blé Dur" and ". Blé Tendre" rows on this page and
-    return {crop_key: [values]}."""
+def find_crop_rows(page, top_min=0, top_max=None) -> dict:
+    """Find the ". Blé Dur" and ". Blé Tendre" rows within the given
+    vertical range of this page and return {crop_key: [values]}.
+    top_min/top_max let us restrict to just the area OR production half
+    of a page, for the case where both tables share one page."""
     words = page.extract_words()
+    if top_max is not None:
+        words = [w for w in words if top_min <= w["top"] < top_max]
     rows = group_words_into_rows(words)
 
     found = {}
@@ -140,8 +144,21 @@ def process_year(nominal_year: int) -> pd.DataFrame:
         campaign_match = CAMPAIGN_RE.search(area_page.extract_text() or "")
         campaign = campaign_match.group(0) if campaign_match else f"unknown ({nominal_year})"
 
-        area_values = find_crop_rows(area_page)
-        prod_values = find_crop_rows(prod_page)
+        if area_page_idx == prod_page_idx:
+            # Both tables share one page -- split by the vertical
+            # position of the "PRODUCTIONS" title so we don't read the
+            # same rows twice for both "area" and "production".
+            prod_title_words = [w for w in prod_page.extract_words() if w["text"].upper().startswith("PRODUCTION")]
+            if not prod_title_words:
+                print("  Same page for both tables, but couldn't locate the PRODUCTIONS title to split on")
+                return pd.DataFrame()
+            split_top = min(w["top"] for w in prod_title_words)
+            print(f"  Both tables on page {area_page_idx + 1} -- splitting at top={split_top:.1f}")
+            area_values = find_crop_rows(area_page, top_min=0, top_max=split_top)
+            prod_values = find_crop_rows(prod_page, top_min=split_top, top_max=prod_page.height)
+        else:
+            area_values = find_crop_rows(area_page)
+            prod_values = find_crop_rows(prod_page)
 
     print(f"  Area rows found: {list(area_values.keys())}")
     print(f"  Production rows found: {list(prod_values.keys())}")

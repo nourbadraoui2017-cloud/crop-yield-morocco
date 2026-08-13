@@ -6,7 +6,7 @@ Track work here. One entry per session — date, what got done, what's next, any
 
 - [x] 0. Check historical yield data availability (region/crop/years) — determines real timeline
 - [x] 1. Pull and visualize NDVI data for the test region via GEE
-- [ ] 2. Merge NDVI with historical rainfall/temperature + yield data
+- [x] 2. Merge NDVI with historical rainfall/temperature + yield data (NDVI+yield done; weather still pending)
 - [ ] 3. Train and validate baseline regression model (test on unseen years)
 - [ ] 4. Wrap in a simple Streamlit dashboard
 
@@ -169,3 +169,37 @@ Track work here. One entry per session — date, what got done, what's next, any
   matching season/campaign, producing one training-ready table. Only
   the 3 overlapping seasons will have a usable label, but all 8 NDVI
   seasons are worth keeping in the merged file for context/plotting.
+
+### 2026-08-13 (continued further still)
+- Found and fixed a real bug in extract_cereal_table_old_format.py:
+  for 3 of the 5 old-format years (2016/2017/2018 annuaires -> campaigns
+  2014-15/2015-16/2016-17), the area AND production tables happen to sit
+  on the SAME page. The code was searching the whole page for both,
+  so it read the identical rows twice -- yield came out as exactly
+  1.000 for all three (production == area), which was the tell that
+  something was wrong. Fixed by splitting the page vertically at the
+  "PRODUCTIONS" title's y-position when both tables share a page (same
+  technique already used for the 2023 format). Re-ran the full
+  pipeline: those 3 years now show real, distinct yields (2.64, 1.28,
+  2.89 t/ha) -- sensible range, no longer suspicious.
+- **STEP 2 DONE.** Wrote src/build_training_table.py: collapses the 192
+  raw NDVI rows into per-season summary features (peak NDVI, mean NDVI,
+  NDVI during the drought-sensitive growth stage Feb-Apr, NDVI during
+  establishment Nov-Dec), collapses yield data to one region-level
+  number per season (using the "Total" province row, Ble Dur + Ble
+  Tendre combined), and merges both on season. Saved to
+  data/processed/training_table.csv.
+- Real signal check on the only 3 seasons with both NDVI and yield
+  (2017-18, 2018-19, 2021-22): 2021-22 has both the lowest NDVI (peak
+  and growth-stage) AND the lowest yield of the three -- consistent
+  with it being a known drought year. Small sample, but the direction
+  of the relationship is exactly what the model needs to learn. Good
+  sign, not proof.
+- Weather data (NASA POWER, rainfall/temperature) NOT yet pulled --
+  still a to-do, would add real predictive signal beyond NDVI alone.
+- Next: either (a) look for 1-2 more HCP annuaire editions to fill the
+  2019-20/2020-21 campaign gap (would raise the usable training set
+  from 3 to potentially 5 seasons -- meaningfully better for step 3),
+  or (b) proceed to step 3 (baseline model) with just 3 seasons,
+  accepting it's more a proof-of-concept than a real trained model at
+  this sample size.
