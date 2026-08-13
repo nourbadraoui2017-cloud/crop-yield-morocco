@@ -83,3 +83,45 @@ Track work here. One entry per session — date, what got done, what's next, any
 - Next: run src/parse_yield_pdfs.py the same way (locally, in this
   same venv) to resolve step 0 for real, then move to step 2 (merge
   NDVI + weather + yield into one training table).
+
+### 2026-08-13 (continued)
+- src/parse_yield_pdfs.py (national Ministry PDF): 0 useful matches.
+  That document turned out to be a glossy national highlights brochure
+  (charts, not tables) with no regional breakdown and no per-hectare
+  yield figures ("rendement"/"quintal"/"qx/ha" essentially absent).
+  Not the right source -- abandoned in favor of HCP's regional annuaire.
+- Found the real source: HCP's Annuaire Statistique Régional (ASR) for
+  Rabat-Salé-Kénitra, published yearly, listed back to 2008 at
+  https://www.hcp.ma/region-rabat/Publications_r3.html . Downloaded
+  ASR 2023 (covers the 2021-2022 growing campaign): page 39 has clean
+  tables -- area (Ha) and production (tonnes) of cereals, PER PROVINCE
+  (Salé, Skhirate-Témara, Khémisset, Kénitra, Sidi Kacem, Sidi Slimane),
+  broken out by crop (Blé Dur, Blé Tendre, Orge, Mais, Riz). No literal
+  "rendement" column, but yield = production / area, which is exactly
+  the standard definition anyway.
+- **STEP 0 largely resolved for at least one year.** Wrote
+  src/extract_cereal_table.py to parse this table programmatically.
+  V1 (pure regex on extracted text) silently dropped several provinces:
+  French thousand-separator formatting ("20 000") is text-ambiguous
+  when two adjacent column values both happen to be clean 3-digit
+  groups (e.g. "20 000 117 300" reads identically to one number as to
+  two) -- no way to disambiguate from text alone.
+  V2 (current): uses word x-coordinates instead of text. Verified
+  empirically: gaps between fragments of the same number are ~1.6pt;
+  gaps between different columns are always 35pt+ -- a reliable
+  threshold (used 10pt) to correctly cluster words into columns
+  regardless of digit-grouping coincidences. Now correctly extracts
+  all 7 rows (6 provinces + Total) from both tables. Computed yields
+  for 2021-2022 range 0.5-2.7 t/ha across provinces/wheat types --
+  consistent with known national ranges (0.4-2.4 t/ha) and with 2021/22
+  being a known drought year. Numbers look real.
+- Next: generalize extract_cereal_table.py to loop over every available
+  ASR year (2008-2023, URLs already listed on the HCP regional
+  publications page) instead of just the hardcoded 2023 one. Table
+  page number and exact layout may shift by year -- need to locate the
+  table dynamically per PDF (e.g. by searching for the
+  "SUPERFICIE DES CULTURES DES CEREALES" title) rather than assuming
+  page 39 always. This will give the real answer to "how many years of
+  matched NDVI (2017+) and yield data overlap" -- the number that
+  determines the final training set size and whether the modeling
+  approach needs to change.

@@ -112,7 +112,7 @@ if __name__ == "__main__":
 
     for name, url in SOURCES.items():
         print(f"\n=== {name} ===")
-        pdf_path = f"../data/raw/{name}.pdf"
+        pdf_path = f"data/raw/{name}.pdf"
         try:
             download_pdf(url, pdf_path)
         except Exception as e:
@@ -129,7 +129,7 @@ if __name__ == "__main__":
                 pdf_path, [h["page"] for h in region_hits]
             )
             for j, table in enumerate(tables):
-                out_csv = f"../data/raw/{name}_table_{j}.csv"
+                out_csv = f"data/raw/{name}_table_{j}.csv"
                 table.to_csv(out_csv, index=False)
                 print(f"    saved candidate table -> {out_csv} (inspect manually)")
 
@@ -144,4 +144,4 @@ if __name__ == "__main__":
     summary_df = pd.DataFrame(summary_rows)
     print("\n=== SUMMARY (log this in PROGRESS.md) ===")
     print(summary_df.to_string(index=False))
-    summary_df.to_csv("../data/processed/yield_data_availability_summary.csv", index=False)
+    summary_df.to_csv("data/processed/yield_data_availability_summary.csv", index=False)
