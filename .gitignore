@@ -9,6 +9,7 @@ data/processed/*
 # (agregats publics, pas de donnees brutes ni sensibles)
 !data/processed/training_table_landsat.csv
 !data/processed/prediction_*.csv
+!data/processed/weather_features.csv
 
 # Python
 __pycache__/

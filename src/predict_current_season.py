@@ -19,13 +19,21 @@ le vrai plan a terme) demandera d'abord une correction
 Sentinel<->Landsat, pas encore construite.
 
 On reutilise directement get_season_ndvi_points() et summarize_season()
-de pull_ndvi_landsat.py -- meme logique GEE que celle deja testee pour
-les 6 saisons d'entrainement, donc pas de code duplique, et surtout on
-ne touche a aucun fichier du pipeline d'entrainement (pas de risque de
-corrompre training_table_landsat.csv).
+de pull_ndvi_landsat.py, et fetch_season_weather()/summarize_season() de
+pull_weather_nasa_power.py -- meme logique deja testee pour les 6 saisons
+d'entrainement, donc pas de code duplique, et surtout on ne touche a
+aucun fichier du pipeline d'entrainement (pas de risque de corrompre
+training_table_landsat.csv ou weather_features.csv).
 
-WHERE TO RUN: localement, meme venv que les autres scripts GEE, avec le
-projet GEE deja configure. Necessite internet reel + earthengine-api.
+Note (etape 3bis) : le modele retenu peut maintenant utiliser une feature
+meteo (rain_establishment_mm) en plus du NDVI -- ce script pull donc les
+deux, et ne construit la prediction qu'a partir de ce que
+models/baseline_model_info.json indique reellement utiliser (info["features"]),
+pour rester correct meme si le modele change a nouveau plus tard.
+
+WHERE TO RUN: localement, meme venv que les autres scripts. Necessite
+internet reel + earthengine-api (pour le NDVI) -- la partie meteo
+n'a besoin d'aucune cle/compte.
 
 Usage: python src/predict_current_season.py
 """
@@ -35,7 +43,8 @@ import json
 import joblib
 import pandas as pd
 
-from pull_ndvi_landsat import get_season_ndvi_points, summarize_season
+from pull_ndvi_landsat import get_season_ndvi_points, summarize_season as summarize_ndvi_season
+from pull_weather_nasa_power import fetch_season_weather, summarize_season as summarize_weather_season
 
 SEASON_TO_PREDICT = 2025  # = saison 2025-2026 (nov 2025 - juin 2026), la derniere terminee
 
@@ -47,15 +56,23 @@ OUTPUT_PATH = f"data/processed/prediction_{SEASON_TO_PREDICT}_{SEASON_TO_PREDICT
 
 def main():
     print(f"Pull du NDVI Landsat 8 pour la saison {SEASON_TO_PREDICT}-{SEASON_TO_PREDICT + 1}...")
-    raw = get_season_ndvi_points(SEASON_TO_PREDICT)
-    if raw.empty:
+    raw_ndvi = get_season_ndvi_points(SEASON_TO_PREDICT)
+    if raw_ndvi.empty:
         print("Aucune image Landsat trouvee pour cette saison -- impossible de predire.")
         return
 
-    features_row = summarize_season(raw, SEASON_TO_PREDICT)
+    features_row = summarize_ndvi_season(raw_ndvi, SEASON_TO_PREDICT)
     print("\nFeatures NDVI calculees :")
     for k, v in features_row.items():
         print(f"  {k}: {v}")
+
+    print(f"\nPull des donnees meteo NASA POWER pour la saison {SEASON_TO_PREDICT}-{SEASON_TO_PREDICT + 1}...")
+    raw_weather = fetch_season_weather(SEASON_TO_PREDICT)
+    weather_row = summarize_weather_season(raw_weather, SEASON_TO_PREDICT)
+    print("Features meteo calculees :")
+    for k, v in weather_row.items():
+        print(f"  {k}: {v}")
+    features_row.update(weather_row)
 
     with open(MODEL_INFO_PATH, encoding="utf-8") as f:
         info = json.load(f)

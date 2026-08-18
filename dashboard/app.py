@@ -23,6 +23,7 @@ import pandas as pd
 import streamlit as st
 
 DATA_PATH = "data/processed/training_table_landsat.csv"
+WEATHER_PATH = "data/processed/weather_features.csv"
 MODEL_PATH = "models/baseline_model.joblib"
 MODEL_INFO_PATH = "models/baseline_model_info.json"
 REAL_PREDICTION_GLOB = "data/processed/prediction_*.csv"
@@ -40,7 +41,20 @@ st.set_page_config(page_title="Prevision rendement ble - Rabat-Sale-Kenitra", la
 
 @st.cache_data
 def load_data():
-    return pd.read_csv(DATA_PATH)
+    """
+    Charge le NDVI + rendement, et fusionne les features meteo (etape 3bis)
+    si ce fichier existe -- le modele retenu peut utiliser une feature
+    meteo en plus du NDVI (ex: rain_establishment_mm), donc le dashboard
+    doit pouvoir lui fournir un slider pour n'importe quelle feature
+    qu'il utilise reellement, pas seulement le NDVI.
+    """
+    df = pd.read_csv(DATA_PATH)
+    try:
+        weather_df = pd.read_csv(WEATHER_PATH)
+        df = df.merge(weather_df, on="season", how="left")
+    except FileNotFoundError:
+        pass
+    return df
 
 
 @st.cache_resource
@@ -178,6 +192,14 @@ with st.expander("Details du modele"):
         "R2 calcule en leave-one-out sur seulement 6 points : encourageant "
         "mais fragile, pourrait changer avec une saison de donnees en plus."
     )
+    if len(features) > 1:
+        st.warning(
+            "Ce modele a plus d'une feature, choisie parmi une dizaine de "
+            "candidats testes sur seulement 6 points de validation. Avec si "
+            "peu de donnees, une partie de l'avantage mesure peut venir du "
+            "hasard plutot que d'un vrai signal -- a interpreter avec "
+            "prudence (voir PROGRESS.md pour le detail)."
+        )
 
 with st.expander("Donnees historiques utilisees"):
     st.dataframe(df, width="stretch")

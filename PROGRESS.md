@@ -335,10 +335,53 @@ Track work here. One entry per session — date, what got done, what's next, any
   sensitive in the repo (no secrets committed) and it's a CV project
   anyway.
   Live at: https://crop-yield-morocco-hfxswyh57ja2zvgqztz2aj.streamlit.app
-- Not done yet / open for later: NASA POWER weather features (deferred
-  twice now), Sentinel-2 calibration bridge (needed for true in-season
-  live predictions instead of post-season ones), precise admin
-  boundary instead of the rough bounding box, automating
+- **STEP 3bis: NASA POWER weather features added.** Wrote
+  src/pull_weather_nasa_power.py -- free API, no key/account needed
+  (unlike GEE), pulls daily precipitation (PRECTOTCORR) and temperature
+  (T2M) for the region's bbox centroid (34.2N, -6.25E), community=AG.
+  Saved to data/processed/weather_features.csv (rain + temp totals/means
+  for the whole season, growth-stage Feb-Apr, and establishment Nov-Dec).
+- Explored broadly first (src/train_model_with_weather.py, a scratch
+  comparison script, not part of the pipeline): 5 weather features
+  alone + 5 combined with ndvi_peak, 10 candidates total. Winner:
+  ndvi_peak + rain_establishment_mm, MAE=0.109 (vs 0.169 for ndvi_peak
+  alone) -- but flagged immediately as a multiple-comparisons risk
+  (testing 10 models on 6 validation points inflates the odds that a
+  "winner" is partly luck). Agronomically plausible though: early-season
+  rain (germination/establishment) is complementary information to
+  NDVI (overall vigor later in the season), not redundant with it.
+- Folded this candidate into the OFFICIAL pipeline script
+  (src/train_baseline_model.py) instead of keeping the exploration
+  separate -- it now merges weather_features.csv when present, adds
+  rain_establishment_only and peak_and_rain_establishment to the same
+  candidate pool as all the NDVI-only models from step 3, and prints an
+  explicit "multiple comparisons" warning whenever the auto-selected
+  winner has more than 1 feature (so the caveat is visible every run,
+  not just talked about once). Ran it: **peak_and_rain_establishment
+  won again** across the full pool of 11 models (MAE=0.109, R²=0.952)
+  -- replaced models/baseline_model.joblib.
+- Updated src/predict_current_season.py and dashboard/app.py to match:
+  the prediction script now also pulls NASA POWER weather for the
+  target season (reusing fetch_season_weather/summarize_season from
+  pull_weather_nasa_power.py) and builds its input from whatever
+  info["features"] actually lists, so it stays correct if the model
+  changes again. The dashboard's load_data() now merges
+  weather_features.csv too (needed so the simulator can show a slider
+  for rain_establishment_mm, not just ndvi_peak), and shows the same
+  multiple-comparisons warning in the model details panel.
+- Re-ran the 2025-2026 real prediction with the new model: **3.114
+  t/ha** (vs 3.187 with the old ndvi_peak-only model -- close, both
+  well above the historical average, reassuring agreement between the
+  two). Notable: rain_establishment_mm for 2025-2026 (275.87mm) is
+  ALSO slightly above the training max (273.76mm in 2014-2015), so
+  this prediction extrapolates on both features now, not just one --
+  reinforces rather than contradicts the existing "interpret with
+  caution" caveat.
+- Not done yet / open for later: Sentinel-2 calibration bridge (needed
+  for true in-season live predictions instead of post-season ones),
+  precise admin boundary instead of the rough bounding box, automating
   predict_current_season.py to run on a schedule instead of manually,
-  and the longer-term roadmap items from README (WhatsApp alerts,
-  insurer risk scoring, cooperative pilot).
+  confirming whether peak_and_rain_establishment holds up once more
+  seasons of data are available (the multiple-comparisons caveat is
+  still open), and the longer-term roadmap items from README (WhatsApp
+  alerts, insurer risk scoring, cooperative pilot).

@@ -1,2 +1,2 @@
-season,campaign,ndvi_peak,predicted_yield_t_ha,historical_avg_t_ha
-2025,2025-2026,0.7188077295827091,3.1867907684574734,2.3491406784490185
+season,campaign,ndvi_peak,rain_establishment_mm,predicted_yield_t_ha,historical_avg_t_ha
+2025,2025-2026,0.7188077295827091,275.86999999999995,3.1143518706792217,2.3491406784490185

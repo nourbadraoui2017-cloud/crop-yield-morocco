@@ -15,12 +15,22 @@ Avec seulement 6 saisons de donnees, on reste volontairement simple :
   du split, et on ne teste jamais sur toutes les saisons.
 
 On compare plusieurs jeux de features : chaque feature NDVI seule, une
-combinaison a 2 features (les deux meilleures individuellement), puis les
+combinaison a 2 features (les deux meilleures individuellement), les
 4 ensemble (avec Ridge pour limiter le risque de sur-ajustement quand on a
-plus de features que de "degres de liberte"). A la fin, le meilleur modele
-(le plus bas MAE en validation leave-one-out) est ré-entraine sur les 6
-saisons completes et sauvegarde dans models/ pour etre reutilise (dashboard,
-predictions futures) sans avoir a refaire cette comparaison a chaque fois.
+plus de features que de "degres de liberte"), et -- si
+data/processed/weather_features.csv existe (etape 3bis, NASA POWER) --
+les features meteo seules et combinees a ndvi_peak. A la fin, le meilleur
+modele (le plus bas MAE en validation leave-one-out) est ré-entraine sur
+les 6 saisons completes et sauvegarde dans models/ pour etre reutilise
+(dashboard, predictions futures) sans avoir a refaire cette comparaison a
+chaque fois.
+
+ATTENTION comparaisons multiples : plus on teste de modeles differents sur
+seulement 6 points de validation, plus il y a de risque qu'un des modeles
+ait l'air bon juste par hasard (pas parce qu'il capture un vrai signal).
+Avec l'ajout de la meteo, on teste maintenant plus d'une dizaine de
+combinaisons -- si le gagnant utilise plusieurs features, un avertissement
+s'affiche a la fin pour le rappeler avant de lui faire confiance.
 """
 
 import json
@@ -34,6 +44,7 @@ from sklearn.model_selection import LeaveOneOut
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 DATA_PATH = "data/processed/training_table_landsat.csv"
+WEATHER_PATH = "data/processed/weather_features.csv"
 OUTPUT_PATH = "data/processed/baseline_model_comparison.csv"
 MODEL_DIR = "models"
 MODEL_PATH = os.path.join(MODEL_DIR, "baseline_model.joblib")
@@ -51,6 +62,14 @@ FEATURE_SETS = {
         "ndvi_growth_stage_mean",
         "ndvi_establishment_mean",
     ],
+}
+
+# Ajoutes seulement si weather_features.csv est present (etape 3bis) --
+# le candidat "rain_establishment" est celui qui est ressorti prometteur
+# dans l'exploration plus large de train_model_with_weather.py.
+WEATHER_FEATURE_SETS = {
+    "rain_establishment_only": ["rain_establishment_mm"],
+    "peak_and_rain_establishment": ["ndvi_peak", "rain_establishment_mm"],
 }
 
 TARGET = "wheat_yield_t_ha"
@@ -90,6 +109,15 @@ def evaluate_model(model_name, model, features, X, y, seasons):
 
 def main():
     df = pd.read_csv(DATA_PATH)
+
+    has_weather = os.path.exists(WEATHER_PATH)
+    if has_weather:
+        weather_df = pd.read_csv(WEATHER_PATH)
+        df = df.merge(weather_df, on="season", how="inner")
+        print(f"weather_features.csv trouve -- {len(df)} saisons apres fusion meteo+NDVI.\n")
+    else:
+        print("weather_features.csv absent -- comparaison NDVI seul uniquement.\n")
+
     y = df[TARGET]
     seasons = df["campaign"]
 
@@ -146,6 +174,16 @@ def main():
             )
         )
 
+    if has_weather:
+        print("\n" + "=" * 60)
+        print("FEATURES METEO (NASA POWER, etape 3bis)")
+        print("=" * 60)
+        for name, features in WEATHER_FEATURE_SETS.items():
+            X = df[features]
+            results.append(
+                evaluate_model(f"LinearRegression [{name}]", LinearRegression(), features, X, y, seasons)
+            )
+
     print("\n" + "=" * 60)
     print("RESUME - classe du meilleur au moins bon (MAE le plus bas)")
     print("=" * 60)
@@ -198,6 +236,17 @@ def main():
     print(f"R2  (LOO)  : {best['r2']:.3f}")
     print(f"Sauvegarde : {MODEL_PATH}")
     print(f"Infos      : {MODEL_INFO_PATH}")
+
+    if len(best_features) > 1:
+        print(
+            f"\nATTENTION comparaisons multiples : {len(results)} modeles ont ete "
+            f"testes sur seulement {len(y)} points de validation, et celui-ci "
+            f"({len(best_features)} features) est le gagnant. Avec si peu de "
+            f"donnees, il y a un vrai risque que ce resultat soit en partie du "
+            f"au hasard plutot qu'a un signal reel -- a interpreter avec prudence, "
+            f"pas comme une verite etablie. Se confirmera (ou pas) avec plus de "
+            f"saisons de donnees a l'avenir."
+        )
 
 
 if __name__ == "__main__":
