@@ -319,12 +319,26 @@ Track work here. One entry per session — date, what got done, what's next, any
   end**: real satellite data -> real historical yield data -> trained
   validated model -> working dashboard -> one real held-out prediction
   that lines up with independent news reporting.
+- **DEPLOYED.** Dashboard rewired to auto-load the latest
+  data/processed/prediction_*.csv and show it in its own green panel,
+  clearly separated from the orange manual NDVI simulator (real vs
+  hypothetical, no longer conflated). Adjusted .gitignore
+  (data/processed/* + *.csv were blocking the two small files the
+  dashboard needs -- added explicit exceptions for
+  training_table_landsat.csv and prediction_*.csv; raw PDFs stay
+  ignored). Pushed to GitHub, deployed on Streamlit Community Cloud.
+  Had to switch the repo from private to public first -- Streamlit's
+  GitHub App was never installed on Nour's account (confirmed via
+  github.com/settings/installations showing zero installed apps), and
+  troubleshooting the App-installation flow through GitHub's UI didn't
+  resolve it; going public was the pragmatic fix given there's nothing
+  sensitive in the repo (no secrets committed) and it's a CV project
+  anyway.
+  Live at: https://crop-yield-morocco-hfxswyh57ja2zvgqztz2aj.streamlit.app
 - Not done yet / open for later: NASA POWER weather features (deferred
   twice now), Sentinel-2 calibration bridge (needed for true in-season
   live predictions instead of post-season ones), precise admin
-  boundary instead of the rough bounding box, wiring
-  predict_current_season.py's output into the dashboard automatically
-  instead of manual slider input, deployment (Streamlit Community
-  Cloud) so someone other than Nour can open it, and the longer-term
-  roadmap items from README (WhatsApp alerts, insurer risk scoring,
-  cooperative pilot).
+  boundary instead of the rough bounding box, automating
+  predict_current_season.py to run on a schedule instead of manually,
+  and the longer-term roadmap items from README (WhatsApp alerts,
+  insurer risk scoring, cooperative pilot).
