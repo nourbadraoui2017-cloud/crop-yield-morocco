@@ -1,0 +1,14 @@
+{
+  "model_name": "LinearRegression [peak_only]",
+  "features": [
+    "ndvi_peak"
+  ],
+  "loo_mae": 0.1692531207705289,
+  "loo_rmse": 0.17513659975592832,
+  "loo_r2": 0.9213780816360262,
+  "coefficients": {
+    "ndvi_peak": 8.060375406228935
+  },
+  "intercept": -2.6070693768782545,
+  "trained_on_n_seasons": 6
+}

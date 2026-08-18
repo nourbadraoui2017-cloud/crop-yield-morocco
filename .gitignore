@@ -1,9 +1,14 @@
 # Data (often large / not meant for git)
 data/raw/
-data/processed/
+data/processed/*
 *.csv
 *.tif
 *.nc
+
+# Exceptions : petits fichiers necessaires au dashboard deploye
+# (agregats publics, pas de donnees brutes ni sensibles)
+!data/processed/training_table_landsat.csv
+!data/processed/prediction_*.csv
 
 # Python
 __pycache__/

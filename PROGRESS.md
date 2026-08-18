@@ -7,8 +7,8 @@ Track work here. One entry per session — date, what got done, what's next, any
 - [x] 0. Check historical yield data availability (region/crop/years) — determines real timeline
 - [x] 1. Pull and visualize NDVI data for the test region via GEE
 - [x] 2. Merge NDVI with historical rainfall/temperature + yield data (NDVI+yield done; weather still pending)
-- [ ] 3. Train and validate baseline regression model (test on unseen years)
-- [ ] 4. Wrap in a simple Streamlit dashboard
+- [x] 3. Train and validate baseline regression model (test on unseen years)
+- [x] 4. Wrap in a simple Streamlit dashboard
 
 ---
 
@@ -243,3 +243,88 @@ Track work here. One entry per session — date, what got done, what's next, any
   regression on the NDVI features) using leave-one-season-out
   cross-validation across these 6 seasons. Optionally pull NASA POWER
   rainfall data first to add as an extra feature (still not done).
+
+### 2026-08-18
+
+- **STEP 3 DONE.** Wrote src/train_baseline_model.py: compares several
+  linear models (each NDVI feature alone, peak+growth_stage combined,
+  all 4 features with plain LinearRegression, all 4 features with
+  Ridge at alpha 0.1/1.0/10.0), all validated with leave-one-out (6
+  seasons = LOO is equivalent to leave-one-season-out here).
+- Decided against pulling NASA POWER weather data first -- would need
+  a new pull + re-merge for uncertain benefit on only 6 points; kept
+  scope to NDVI-only for this baseline. Can revisit later if the model
+  needs more signal.
+- **Winner: `ndvi_peak` alone.** MAE = 0.169 t/ha, RMSE = 0.175 t/ha,
+  R² = 0.921 (LOO). `ndvi_growth_stage_mean` alone close second (MAE
+  0.178, R² 0.872), matching the rank-correlation hint from step 2.
+  The 2-feature combo (peak + growth_stage) did NOT beat peak alone
+  (MAE 0.211) -- more features isn't automatically better even at n=2
+  with only 6 rows.
+- **Concrete overfitting example**: all-4-features LinearRegression
+  collapsed (MAE 1.165, R² -5.611) -- for the 2016-2017 held-out
+  season it predicted -0.70 t/ha, a physically impossible negative
+  yield. With 5 training rows and 4 features per LOO fold, the model
+  has almost as many parameters as data points and fits noise instead
+  of signal. Ridge regularization tamed this somewhat (alpha=0.1 got
+  R² back up to 0.232) but still underperformed the single-feature
+  model. This is the concrete version of the "small data = simple
+  model" rule discussed before starting step 3.
+- Script auto-selects the best LOO model, refits it on all 6 seasons
+  (full data, no held-out row -- appropriate once you're done
+  evaluating and want the best real model), and saves it:
+  models/baseline_model.joblib + models/baseline_model_info.json
+  (features, coefficients, intercept, LOO metrics). Ready to be loaded
+  directly by the Streamlit dashboard in step 4.
+- Honest caveat to keep in mind: R²=0.92 on 6 points is encouraging
+  but fragile -- ranking could shift with one more season of data.
+  This is a proof-of-concept baseline, not a production-grade model.
+- Next: step 4 -- Streamlit dashboard that loads models/baseline_model.joblib
+  and shows predicted yield vs. historical average.
+- **STEP 4 DONE.** Wrote dashboard/app.py: loads the saved model, a
+  slider per model feature (bounded by the historical range), live
+  metrics (predicted yield vs 6-season historical average), a bar
+  chart (history in blue, current prediction in orange, dashed
+  historical-average line), and expanders for model details (MAE/R²,
+  caveat about fragility at n=6) and the raw historical table. Tested
+  end to end with `streamlit run dashboard\app.py` -- works.
+- Realized the dashboard slider alone is just a manual "what-if"
+  simulator, not a live prediction -- flagged by Nour. Two real
+  constraints found: (a) the 2026-2027 season hasn't started yet (no
+  satellite imagery exists for it), so it can't be predicted today;
+  (b) the model is trained on Landsat NDVI specifically, and Sentinel-2
+  NDVI runs systematically lower for the same ground truth -- feeding
+  Sentinel-2 values into this model directly would bias predictions
+  down. A Sentinel<->Landsat calibration bridge is needed before doing
+  live Sentinel-2-based predictions in-season; not built yet.
+- Instead wrote src/predict_current_season.py: pulls real Landsat NDVI
+  for the most recent COMPLETED season (2025-2026, harvested
+  May-June 2026) by reusing get_season_ndvi_points/summarize_season
+  from pull_ndvi_landsat.py, then runs it through the saved model.
+  Result: ndvi_peak = 0.719 (a new high, above the 2016-2017 record of
+  0.693 in training) -> predicted yield 3.187 t/ha, above every
+  historical season including the best one (2017-2018, 3.02 t/ha).
+  Saved to data/processed/prediction_2025_2026.csv.
+- This is an extrapolation (ndvi_peak beyond the training range), so
+  the LOO MAE of 0.169 doesn't strictly apply -- flagged as less
+  reliable than an interpolated prediction. Sanity-checked against real
+  news: 2025-2026 was confirmed (multiple sources, Aug 2026) as an
+  exceptional rain-recovery season after 7 years of drought, national
+  cereal harvest ~90M quintaux (more than double prior year), and
+  Rabat-Salé-Kénitra production specifically up >25%. Directionally
+  validates the model; the exact t/ha figure remains unverified until
+  HCP eventually publishes the matching annuaire (likely 1-2 years
+  out).
+- **MVP (steps 0-4 from README) is now functionally complete end to
+  end**: real satellite data -> real historical yield data -> trained
+  validated model -> working dashboard -> one real held-out prediction
+  that lines up with independent news reporting.
+- Not done yet / open for later: NASA POWER weather features (deferred
+  twice now), Sentinel-2 calibration bridge (needed for true in-season
+  live predictions instead of post-season ones), precise admin
+  boundary instead of the rough bounding box, wiring
+  predict_current_season.py's output into the dashboard automatically
+  instead of manual slider input, deployment (Streamlit Community
+  Cloud) so someone other than Nour can open it, and the longer-term
+  roadmap items from README (WhatsApp alerts, insurer risk scoring,
+  cooperative pilot).
