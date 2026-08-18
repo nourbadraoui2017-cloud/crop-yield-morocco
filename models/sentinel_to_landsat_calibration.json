@@ -1,0 +1,7 @@
+{
+  "intercept": -0.07589810483117154,
+  "coefficient": 1.6185797583248338,
+  "r2_on_calibration_points": 0.8702484432289694,
+  "n_calibration_points": 3,
+  "formula": "ndvi_peak_landsat_equivalent = intercept + coefficient * ndvi_peak_sentinel"
+}
