@@ -377,11 +377,30 @@ Track work here. One entry per session — date, what got done, what's next, any
   this prediction extrapolates on both features now, not just one --
   reinforces rather than contradicts the existing "interpret with
   caution" caveat.
-- Not done yet / open for later: Sentinel-2 calibration bridge (needed
-  for true in-season live predictions instead of post-season ones),
-  precise admin boundary instead of the rough bounding box, automating
-  predict_current_season.py to run on a schedule instead of manually,
-  confirming whether peak_and_rain_establishment holds up once more
-  seasons of data are available (the multiple-comparisons caveat is
-  still open), and the longer-term roadmap items from README (WhatsApp
-  alerts, insurer risk scoring, cooperative pilot).
+- **Sentinel-2 <-> Landsat calibration attempted.** Wrote
+  src/calibrate_sentinel_landsat.py: fits a simple linear correction
+  (ndvi_peak_landsat_equivalent = -0.076 + 1.619 * ndvi_peak_sentinel)
+  on the 3 seasons where both sensors were computed (2017-18, 2018-19,
+  2021-22), R²=0.870 on those calibration points. Saved to
+  models/sentinel_to_landsat_calibration.json.
+- **Validation result: works in principle, not precise enough to trust
+  yet.** Compared yield predictions using real Landsat vs
+  Sentinel-2-corrected NDVI for the same 3 seasons: 2021-2022 matched
+  closely (0.019 t/ha apart), but 2017-2018 and 2018-2019 differed by
+  0.245 and 0.264 t/ha respectively -- bigger than the yield model's
+  own claimed MAE (0.109). Only 3 calibration points (2 parameters, ~1
+  real degree of freedom) is genuinely too thin to trust for real
+  decisions; treat this bridge as a working proof-of-concept, not
+  production-ready. Would need more overlap seasons (impossible to get
+  more historically since Sentinel-2 only starts ~2017 and yield data
+  stops at 2021-22 -- future seasons as they happen are the only way to
+  add calibration points) before relying on it for genuine in-season
+  (not just post-season) predictions.
+- Not done yet / open for later: precise admin boundary instead of the
+  rough bounding box, automating predict_current_season.py to run on a
+  schedule instead of manually, confirming whether
+  peak_and_rain_establishment and the Sentinel-Landsat calibration hold
+  up once more seasons of data are available (both still open
+  multiple-comparisons / thin-calibration caveats), and the longer-term
+  roadmap items from README (WhatsApp alerts, insurer risk scoring,
+  cooperative pilot).
