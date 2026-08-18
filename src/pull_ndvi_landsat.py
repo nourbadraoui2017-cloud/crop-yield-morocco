@@ -27,10 +27,13 @@ Usage: python src/pull_ndvi_landsat.py
 import ee
 import pandas as pd
 
+from region import get_region_geometry
+
 ee.Initialize(project="crop-yield-morocco")
 
-# Same fallback bounding box used in pull_ndvi.py, for consistency
-GEOM = ee.Geometry.Rectangle([-7.0, 33.5, -5.5, 34.9])
+# Vraie frontiere administrative si trouvee dans Earth Engine, sinon
+# le meme rectangle approximatif qu'avant -- voir src/region.py.
+GEOM = get_region_geometry()
 
 SEASONS_TO_FILL = [2014, 2015, 2016, 2017, 2018, 2021]  # all 6 seasons with
     # real yield data. Deliberately includes 2017/2018/2021 too (which

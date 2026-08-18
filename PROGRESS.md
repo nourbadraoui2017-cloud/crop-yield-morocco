@@ -396,11 +396,57 @@ Track work here. One entry per session — date, what got done, what's next, any
   stops at 2021-22 -- future seasons as they happen are the only way to
   add calibration points) before relying on it for genuine in-season
   (not just post-season) predictions.
-- Not done yet / open for later: precise admin boundary instead of the
-  rough bounding box, automating predict_current_season.py to run on a
-  schedule instead of manually, confirming whether
-  peak_and_rain_establishment and the Sentinel-Landsat calibration hold
-  up once more seasons of data are available (both still open
-  multiple-comparisons / thin-calibration caveats), and the longer-term
-  roadmap items from README (WhatsApp alerts, insurer risk scoring,
-  cooperative pilot).
+- **Replaced the approximate bounding box with the real administrative
+  zone.** Created src/region.py, used by both pull_ndvi.py and
+  pull_ndvi_landsat.py instead of the rough rectangle
+  ([-7.0, 33.5, -5.5, 34.9]). Two dead ends before landing on the
+  working approach: (1) FAO GAUL's "level1" (region) dataset turned out
+  to still use the pre-2015 Moroccan region layout, where
+  "Rabat-Salé-Zemmour-Zaër" did NOT include Kénitra (Kénitra was part
+  of a different region, "Gharb-Chrarda-Béni Hssen", at the time) --
+  using it as-is would have silently excluded one of the most important
+  wheat-growing provinces in the region, worse than the honest
+  oversized rectangle; (2) an attempt to fetch an external boundary
+  file (geoBoundaries/HDX) hit rate-limiting/LFS issues and was
+  abandoned in favor of a dataset already built into Earth Engine.
+  Landed on: FAO GAUL "level2" (provinces), matched by accent-insensitive
+  keyword search against the 7 provinces/prefectures that make up
+  Rabat-Salé-Kénitra today (Rabat, Salé, Skhirate-Témara, Khémisset,
+  Kénitra, Sidi Kacem, Sidi Slimane), unioned into one geometry. Found
+  6 of 7 (Sidi Slimane missing, likely not a separate unit in this
+  2015-vintage dataset) -- accepted as good enough. Falls back to the
+  old rectangle (loudly, not silently) if fewer than half the expected
+  provinces are found.
+- Re-ran the full pipeline with the corrected zone: pull_ndvi_landsat.py
+  -> build_training_table_landsat.py -> train_baseline_model.py ->
+  predict_current_season.py. Notable result: **the winning model
+  flipped back to ndvi_peak alone** (MAE=0.156, R²=0.901), beating
+  peak_and_rain_establishment (MAE=0.174, R²=0.892) -- the opposite
+  ranking from the imprecise-zone run. Consistent with the
+  multiple-comparisons caveat already on record: part of the weather
+  feature's earlier edge was likely noise from the imprecise NDVI zone,
+  not a robust real signal. Simpler model, similar accuracy, less risk
+  -- reverted models/baseline_model.joblib to peak_only accordingly.
+- **Real 2025-2026 prediction changed substantially: 2.583 t/ha** (vs
+  3.114-3.187 t/ha with the old imprecise zone), only +0.234 t/ha above
+  the historical average (2.349 t/ha) rather than above every
+  historical season. Underlying cause: ndvi_peak for the current season
+  dropped from 0.7188 (old rectangle) to 0.6406 (correct provinces) --
+  a meaningful shift, not noise. Take-away flagged to Nour directly:
+  this is a materially more modest "above-average, not exceptional"
+  read on the season, still directionally positive but no longer as
+  strong a match to the "exceptional harvest" news framing used
+  earlier -- worth re-checking against news once more before leaning on
+  either number. Files updated: data/processed/ndvi_features_landsat.csv,
+  training_table_landsat.csv, baseline_model.joblib,
+  baseline_model_info.json, prediction_2025_2026.csv. Not yet pushed to
+  GitHub at time of writing -- push + Streamlit Cloud reboot (same
+  caching gotcha as before) still needed for the live dashboard to
+  reflect this.
+- Not done yet / open for later: automating predict_current_season.py
+  to run on a schedule instead of manually, confirming whether
+  peak_only (now reconfirmed as champion) and the Sentinel-Landsat
+  calibration hold up once more seasons of data are available, adding
+  Sidi Slimane to the region if a suitable dataset is found, and the
+  longer-term roadmap items from README (WhatsApp alerts, insurer risk
+  scoring, cooperative pilot).

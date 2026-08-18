@@ -1,16 +1,14 @@
 {
-  "model_name": "LinearRegression [peak_and_rain_establishment]",
+  "model_name": "LinearRegression [peak_only]",
   "features": [
-    "ndvi_peak",
-    "rain_establishment_mm"
+    "ndvi_peak"
   ],
-  "loo_mae": 0.10924742064252169,
-  "loo_rmse": 0.1367078446316934,
-  "loo_r2": 0.9520954592261166,
+  "loo_mae": 0.15557738118867792,
+  "loo_rmse": 0.196971300463115,
+  "loo_r2": 0.9005520778562375,
   "coefficients": {
-    "ndvi_peak": 9.734523728680166,
-    "rain_establishment_mm": -0.0018132427467363401
+    "ndvi_peak": 9.657188987888913
   },
-  "intercept": -3.382679752760222,
+  "intercept": -3.603765537593063,
   "trained_on_n_seasons": 6
 }

@@ -44,31 +44,14 @@ ee.Initialize(project="crop-yield-morocco")
 # ---------------------------------------------------------------------
 # 2. Define the region: Rabat-Sale-Kenitra
 #
-#    GADM naming for Moroccan regions is inconsistent across dataset
-#    versions. Rather than guessing the exact admin boundary name and
-#    having it silently fail or match the wrong feature, this first
-#    prints available region names so you can confirm/fix the filter
-#    below before trusting the result.
+#    Cherche la vraie frontiere administrative dans Earth Engine (FAO
+#    GAUL) via src/region.py, avec le rectangle approximatif comme
+#    filet de securite si elle n'est pas trouvee. Voir region.py pour
+#    le detail et pourquoi ce changement ameliore la precision du NDVI.
 # ---------------------------------------------------------------------
-admin1 = ee.FeatureCollection("FAO/GAUL/2015/level1").filter(
-    ee.Filter.eq("ADM0_NAME", "Morocco")
-)
+from region import get_region_geometry
 
-# Uncomment to inspect available names once, interactively:
-# names = admin1.aggregate_array("ADM1_NAME").getInfo()
-# print(names)
-
-region_name_candidates = ["Rabat-Sale-Kenitra", "Rabat-Sale-Zemmour-Zaer"]
-region = admin1.filter(ee.Filter.inList("ADM1_NAME", region_name_candidates))
-
-# Fallback: if FAO/GAUL 2015 predates the 2015 Moroccan regional reform
-# and doesn't have the new boundary, use a manually drawn bounding box
-# instead (approximate -- refine against an actual shapefile, e.g. from
-# GADM 4.1 or HCP's own geodata, before this becomes final):
-FALLBACK_BBOX = ee.Geometry.Rectangle([-7.0, 33.5, -5.5, 34.9])
-
-# geom = region.geometry()   # use once region_name_candidates is confirmed
-geom = FALLBACK_BBOX  # safe default until the admin boundary is verified
+geom = get_region_geometry()
 
 # ---------------------------------------------------------------------
 # 3. Cloud-masking function for Sentinel-2 SR Harmonized
