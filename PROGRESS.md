@@ -203,3 +203,43 @@ Track work here. One entry per session — date, what got done, what's next, any
   or (b) proceed to step 3 (baseline model) with just 3 seasons,
   accepting it's more a proof-of-concept than a real trained model at
   this sample size.
+
+### 2026-08-13 (continued, final push of the day)
+- Checked HCP directly: no annuaire edition exists for 2021 or 2022
+  (list jumps straight from 2020 to 2023) -- likely a COVID-era gap.
+  So 2019-20/2020-21 campaigns are permanently unavailable from this
+  source; 3 overlapping seasons was a hard ceiling with Sentinel-2 alone.
+- Instead extended NDVI coverage BACKWARD using Landsat 8 (available
+  since 2013, vs Sentinel-2's ~2017 start). Wrote
+  src/pull_ndvi_landsat.py -- per-image NDVI (not 10-day windows, since
+  Landsat's 16-day revisit is too sparse for that), same summary
+  features as the Sentinel-2 pipeline (peak, mean, growth-stage mean,
+  establishment mean).
+- **Important data-quality catch**: Landsat NDVI values run
+  systematically higher than Sentinel-2's for the same seasons (e.g.
+  peak ~0.68 vs ~0.45) -- different sensor, different bands/resolution.
+  Mixing both sensors directly in one training set would have taught
+  the model a fake "old years vs new years" pattern that's actually
+  just a sensor artifact, not a real crop signal -- dangerous with only
+  6 data points. Fix: recomputed Landsat NDVI for ALL 6 yield seasons
+  (including 2017-18/2018-19/2021-22, which already had Sentinel-2
+  data) so the whole training set uses ONE consistent sensor. Sentinel-2
+  stays the plan for live/future predictions once deployed (better
+  resolution + revisit); Landsat is specifically for building a
+  consistent historical training set.
+- **STEP 2 FULLY DONE.** Wrote src/build_training_table_landsat.py:
+  merges the 6-season Landsat NDVI features with the 6-season yield
+  data. Result: data/processed/training_table_landsat.csv, 6 of 6
+  yield seasons matched (up from 3 of 8 with Sentinel-2 alone).
+- **Strong sanity check**: ranking the 6 seasons by growth-stage NDVI
+  (Feb-Apr) vs ranking by actual yield gives almost the same order --
+  only 2014 and 2016 swap places. For just 6 points, that's a
+  near-perfect monotonic relationship (~0.94 rank correlation) --
+  strong evidence NDVI is a real, usable predictor here, not noise.
+  Doesn't guarantee the model will generalize well, but it's a good sign.
+- THIS is the real training table for step 3, not the earlier
+  Sentinel-2-only training_table.csv (which only had 3 usable rows).
+- Next: step 3 -- train and validate a baseline model (linear
+  regression on the NDVI features) using leave-one-season-out
+  cross-validation across these 6 seasons. Optionally pull NASA POWER
+  rainfall data first to add as an extra feature (still not done).
